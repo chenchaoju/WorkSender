@@ -7,6 +7,14 @@ export interface Category {
   updatedAt: number
 }
 
+export interface SnippetItem {
+  id: string
+  label: string
+  content: string
+  itemType: 'text' | 'image'
+  imageUrl?: string
+}
+
 export interface Snippet {
   id: string
   title: string
@@ -14,7 +22,8 @@ export interface Snippet {
   categoryId: string | null
   tags: string[]
   imageUrl?: string
-  type: 'text' | 'image' | 'link'
+  type: 'text' | 'image' | 'link' | 'multi'
+  items?: SnippetItem[]
   createdAt: number
   updatedAt: number
 }
