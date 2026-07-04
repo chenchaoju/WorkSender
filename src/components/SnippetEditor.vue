@@ -2,7 +2,7 @@
 import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue'
 import type { Snippet, SnippetItem } from '@/types'
 import { useCategoryStore } from '@/stores/categories'
-import { X, Image as ImageIcon, Type, Link as LinkIcon, List, Trash2 } from 'lucide-vue-next'
+import { X, Image as ImageIcon, Type, Link as LinkIcon, List, Trash2, Maximize2, Minimize2 } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { generateId } from '@/utils/storage'
 
@@ -27,6 +27,11 @@ const items = ref<SnippetItem[]>([])
 const dragOver = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const previewImage = ref('')
+const isExpanded = ref(false)
+
+function toggleExpand() {
+  isExpanded.value = !isExpanded.value
+}
 
 const isEdit = computed(() => !!props.snippet)
 const dialogTitle = computed(() => isEdit.value ? '编辑复制板' : '新建复制板')
@@ -152,6 +157,9 @@ function closePreview() {
 }
 
 watch(() => props.visible, (val) => {
+  if (!val) {
+    isExpanded.value = false
+  }
   if (val) {
     if (props.snippet) {
       title.value = props.snippet.title
@@ -234,23 +242,40 @@ function handleSave() {
   <Teleport to="body">
     <div
       v-if="visible"
-      class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-2 sm:p-4 bg-black/40 backdrop-blur-sm"
+      class="fixed inset-0 z-50 flex justify-center bg-black/40 backdrop-blur-sm transition-all duration-300"
+      :class="isExpanded ? 'items-center p-0' : 'items-end sm:items-center p-2 sm:p-4'"
       @click.self="emit('close')"
     >
-      <div class="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-xl shadow-2xl w-full max-w-3xl h-[92vh] sm:h-auto sm:max-h-[90vh] flex flex-col animate-scaleIn">
+      <div
+        class="bg-white dark:bg-slate-800 shadow-2xl w-full flex flex-col animate-scaleIn transition-all duration-300"
+        :class="isExpanded
+          ? 'h-screen max-h-screen rounded-none sm:rounded-xl sm:max-w-[95vw] sm:h-[95vh] sm:max-h-[95vh]'
+          : 'rounded-t-2xl sm:rounded-xl max-w-3xl h-[92vh] sm:h-auto sm:max-h-[90vh]'"
+      >
         <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">{{ dialogTitle }}</h2>
-          <button
-            class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-            @click="emit('close')"
-          >
-            <X class="w-5 h-5" />
-          </button>
+          <div class="flex items-center gap-1">
+            <button
+              class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              :title="isExpanded ? '收缩' : '最大化'"
+              @click="toggleExpand"
+            >
+              <Minimize2 v-if="isExpanded" class="w-5 h-5" />
+              <Maximize2 v-else class="w-5 h-5" />
+            </button>
+            <button
+              class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              @click="emit('close')"
+            >
+              <X class="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">标题</label>
+        <div class="flex-1 overflow-hidden p-4 sm:p-6 flex flex-col">
+          <div class="flex-shrink-0 space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">标题</label>
             <input
               v-model="title"
               type="text"
@@ -292,8 +317,9 @@ function handleSave() {
               </option>
             </select>
           </div>
+        </div>
 
-          <div v-if="type === 'image'">
+        <div v-if="type === 'image'" class="flex-1 overflow-y-auto mt-4">
             <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">图片</label>
             <div v-if="imageUrl" class="relative inline-block">
               <img :src="imageUrl" class="max-h-64 rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity" @click="openPreview(imageUrl)" />
@@ -320,7 +346,7 @@ function handleSave() {
             </div>
           </div>
 
-          <div v-else-if="type === 'multi'">
+          <div v-else-if="type === 'multi'" class="flex-1 overflow-y-auto mt-4">
             <div class="flex items-center justify-between mb-2">
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">子项列表（{{ items.length }} 项）</label>
               <div class="flex gap-2">
@@ -451,13 +477,12 @@ function handleSave() {
             </div>
           </div>
 
-          <div v-else class="flex-1 flex flex-col">
+          <div v-else class="flex-1 flex flex-col min-h-0">
             <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">内容</label>
             <textarea
               v-model="content"
-              rows="12"
               :placeholder="type === 'link' ? '输入链接地址...' : '输入复制板内容...'"
-              class="w-full flex-1 px-3.5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none font-mono text-sm leading-relaxed"
+              class="w-full flex-1 min-h-0 px-3.5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none font-mono text-sm leading-relaxed"
             ></textarea>
           </div>
         </div>
