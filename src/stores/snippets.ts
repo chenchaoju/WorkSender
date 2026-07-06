@@ -7,9 +7,9 @@ const defaultSnippets: Snippet[] = [
   {
     id: 'snippet_welcome',
     title: '欢迎使用 WorkSnippetHub',
-    content: '你好！欢迎使用 WorkSnippetHub 工作话术管理工具。\n\n这里可以保存你工作中常用的话术、资料、链接和图片，通过分类和标签快速找到，一键复制提高效率。\n\n点击左上角"新建话术"开始添加你的第一条内容吧！',
+    content: '你好！欢迎使用 WorkSnippetHub 工作复制板管理工具。\n\n这里可以保存你工作中常用的复制板、资料、链接和图片，通过分类快速找到，一键复制提高效率。\n\n点击左上角"新建复制板"开始添加你的第一条内容吧！',
     categoryId: 'cat_customer',
-    tags: ['欢迎', '使用说明'],
+    tags: [],
     type: 'text',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -19,7 +19,7 @@ const defaultSnippets: Snippet[] = [
     title: '每日汇报模板',
     content: '【今日工作】\n1. 完成了 XX 功能开发\n2. 跟进了 XX 问题\n3. 参加了 XX 会议\n\n【明日计划】\n1. 继续推进 XX 任务\n2. 处理 XX 需求\n\n【风险/问题】\n- 暂无',
     categoryId: 'cat_report',
-    tags: ['汇报', '模板'],
+    tags: [],
     type: 'text',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -52,25 +52,12 @@ export const useSnippetStore = defineStore('snippets', () => {
       result = result.filter(s => {
         return keywords.every(kw =>
           s.title.toLowerCase().includes(kw) ||
-          s.content.toLowerCase().includes(kw) ||
-          s.tags.some(t => t.toLowerCase().includes(kw))
+          s.content.toLowerCase().includes(kw)
         )
       })
     }
 
     return result.sort((a, b) => b.updatedAt - a.updatedAt)
-  })
-
-  const allTags = computed(() => {
-    const tagMap = new Map<string, number>()
-    snippets.value.forEach(s => {
-      s.tags.forEach(t => {
-        tagMap.set(t, (tagMap.get(t) || 0) + 1)
-      })
-    })
-    return Array.from(tagMap.entries())
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
   })
 
   const selectedSnippet = computed(() => {
@@ -93,9 +80,10 @@ export const useSnippetStore = defineStore('snippets', () => {
       title: data.title,
       content: data.content,
       categoryId: data.categoryId ?? null,
-      tags: data.tags ?? [],
+      tags: [],
       imageUrl: data.imageUrl,
       type: data.type ?? 'text',
+      items: data.items,
       createdAt: now,
       updatedAt: now,
     }
@@ -156,7 +144,6 @@ export const useSnippetStore = defineStore('snippets', () => {
   return {
     snippets,
     filteredSnippets,
-    allTags,
     activeCategoryId,
     searchKeyword,
     selectedSnippetId,

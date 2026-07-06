@@ -78,19 +78,6 @@ function previewText(content: string): string {
         {{ previewText(snippet.content) }}
       </p>
 
-      <div v-if="snippet.tags.length > 0" class="flex flex-wrap gap-1 mb-2">
-        <span
-          v-for="tag in snippet.tags.slice(0, 3)"
-          :key="tag"
-          class="px-2 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full"
-        >
-          #{{ tag }}
-        </span>
-        <span v-if="snippet.tags.length > 3" class="text-xs text-slate-400">
-          +{{ snippet.tags.length - 3 }}
-        </span>
-      </div>
-
       <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
         <span class="flex items-center gap-1">
           <span

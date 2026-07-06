@@ -61,7 +61,7 @@ function cancelEdit() {
 }
 
 function deleteCategory(id: string, name: string) {
-  if (confirm(`确定要删除分类「${name}」吗？该分类下的话术将变为未分类。`)) {
+  if (confirm(`确定要删除分类「${name}」吗？该分类下的复制板将变为未分类。`)) {
     snippetStore.snippets.forEach(s => {
       if (s.categoryId === id) {
         snippetStore.updateSnippet(s.id, { categoryId: null })
@@ -98,7 +98,7 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
       >
         <span class="flex items-center gap-2">
           <FolderOpen class="w-4 h-4" />
-          全部话术
+          全部复制板
         </span>
         <span class="text-xs opacity-70">{{ snippetStore.countByCategory(null) }}</span>
       </div>

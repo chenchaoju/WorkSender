@@ -47,7 +47,7 @@ async function handleImport(e: Event) {
   try {
     const data = await importFromJson(file)
     await ElMessageBox.confirm(
-      `检测到 ${data.snippets.length} 条话术和 ${data.categories.length} 个分类。\n是否导入？将覆盖现有数据。`,
+      `检测到 ${data.snippets.length} 条复制板和 ${data.categories.length} 个分类。\n是否导入？将覆盖现有数据。`,
       '确认导入',
       {
         confirmButtonText: '导入覆盖',
@@ -61,7 +61,7 @@ async function handleImport(e: Event) {
     }
     snippetStore.clearAll()
     snippetStore.importSnippets(data.snippets)
-    ElMessage.success(`成功导入 ${data.snippets.length} 条话术`)
+    ElMessage.success(`成功导入 ${data.snippets.length} 条复制板`)
   } catch (err) {
     ElMessage.error(err instanceof Error ? err.message : '导入失败')
   } finally {
@@ -72,7 +72,7 @@ async function handleImport(e: Event) {
 async function handleClearAll() {
   try {
     await ElMessageBox.confirm(
-      '确定要清空所有话术数据吗？此操作不可恢复！',
+      '确定要清空所有复制板数据吗？此操作不可恢复！',
       '确认清空',
       {
         confirmButtonText: '确定清空',
@@ -99,7 +99,7 @@ const emit = defineEmits<{
       </div>
       <div>
         <h1 class="text-base font-bold text-slate-800 dark:text-slate-100 leading-tight">WorkSnippetHub</h1>
-        <p class="text-xs text-slate-400 dark:text-slate-500">工作话术管理工具</p>
+        <p class="text-xs text-slate-400 dark:text-slate-500">工作复制板管理工具</p>
       </div>
     </div>
 
@@ -109,7 +109,7 @@ const emit = defineEmits<{
         <input
           v-model="searchInput"
           type="text"
-          placeholder="搜索话术标题、内容或标签..."
+          placeholder="搜索复制板标题、内容..."
           class="w-full pl-10 pr-20 py-2.5 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-none focus:border-indigo-500 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500/20 transition-all"
           @input="handleSearch"
         />
@@ -173,7 +173,7 @@ const emit = defineEmits<{
         @click="emit('newSnippet')"
       >
         <Plus class="w-4 h-4" />
-        新建话术
+        新建复制板
       </button>
     </div>
   </header>
