@@ -155,7 +155,7 @@ const formattedDate = computed(() => {
         <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
           <Copy class="w-8 h-8 opacity-50" />
         </div>
-        <p class="text-sm">选择一个话术查看详情</p>
+        <p class="text-sm">选择一个复制板查看详情</p>
         <p class="text-xs mt-1 opacity-70">点击左侧卡片快速预览</p>
       </div>
     </template>

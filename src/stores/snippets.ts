@@ -6,8 +6,8 @@ import { loadFromStorage, saveToStorage, generateId } from '@/utils/storage'
 const defaultSnippets: Snippet[] = [
   {
     id: 'snippet_welcome',
-    title: '欢迎使用 WorkSnippetHub',
-    content: '你好！欢迎使用 WorkSnippetHub 工作话术管理工具。\n\n这里可以保存你工作中常用的话术、资料、链接和图片，通过分类和标签快速找到，一键复制提高效率。\n\n点击左上角"新建话术"开始添加你的第一条内容吧！',
+    title: '欢迎使用个人工作助手',
+    content: '你好！欢迎使用个人工作助手复制板管理工具。\n\n这里可以保存你工作中常用的复制板、资料、链接和图片，通过分类和标签快速找到，一键复制提高效率。\n\n点击右上角"新建复制板"开始添加你的第一条内容吧！',
     categoryId: 'cat_customer',
     tags: ['欢迎', '使用说明'],
     type: 'text',
@@ -96,6 +96,7 @@ export const useSnippetStore = defineStore('snippets', () => {
       tags: data.tags ?? [],
       imageUrl: data.imageUrl,
       type: data.type ?? 'text',
+      items: data.items,
       createdAt: now,
       updatedAt: now,
     }

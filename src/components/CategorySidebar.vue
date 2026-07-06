@@ -2,18 +2,29 @@
 import { computed, ref } from 'vue'
 import { useCategoryStore } from '@/stores/categories'
 import { useSnippetStore } from '@/stores/snippets'
-import { Folder, FolderOpen, Hash, Plus, Settings as SettingsIcon, Inbox } from 'lucide-vue-next'
+import { Folder, FolderOpen, Hash, Plus, Settings as SettingsIcon, Inbox, X, GripVertical } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 
 const categoryStore = useCategoryStore()
 const snippetStore = useSnippetStore()
 
-const showCategoryManager = ref(false)
+const props = defineProps<{
+  mobileOpen?: boolean
+}>()
+
+const emit = defineEmits<{
+  (e: 'close-mobile'): void
+}>()
+
 const newCatName = ref('')
 const newCatColor = ref('#3b82f6')
 const editingId = ref<string | null>(null)
 const editName = ref('')
 const editColor = ref('')
+
+// 拖拽排序相关
+const dragId = ref<string | null>(null)
+const dragOverId = ref<string | null>(null)
 
 const colorOptions = [
   '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
@@ -23,14 +34,17 @@ const colorOptions = [
 
 function selectAll() {
   snippetStore.setActiveCategory(null)
+  emit('close-mobile')
 }
 
 function selectUncategorized() {
   snippetStore.setActiveCategory('__uncategorized__')
+  emit('close-mobile')
 }
 
 function selectCategory(id: string) {
   snippetStore.setActiveCategory(id)
+  emit('close-mobile')
 }
 
 function addCategory() {
@@ -61,7 +75,7 @@ function cancelEdit() {
 }
 
 function deleteCategory(id: string, name: string) {
-  if (confirm(`确定要删除分类「${name}」吗？该分类下的话术将变为未分类。`)) {
+  if (confirm(`确定要删除分类「${name}」吗？该分类下的复制板将变为未分类。`)) {
     snippetStore.snippets.forEach(s => {
       if (s.categoryId === id) {
         snippetStore.updateSnippet(s.id, { categoryId: null })
@@ -75,17 +89,84 @@ function deleteCategory(id: string, name: string) {
   }
 }
 
+// 拖拽排序
+function onDragStart(e: DragEvent, id: string) {
+  dragId.value = id
+  if (e.dataTransfer) {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', id)
+  }
+}
+
+function onDragOver(e: DragEvent, id: string) {
+  e.preventDefault()
+  if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'
+  dragOverId.value = id
+}
+
+function onDragLeave() {
+  dragOverId.value = null
+}
+
+function onDrop(e: DragEvent, targetId: string) {
+  e.preventDefault()
+  const sourceId = dragId.value
+  if (!sourceId || sourceId === targetId) {
+    dragId.value = null
+    dragOverId.value = null
+    return
+  }
+
+  const cats = categoryStore.sortedCategories
+  const sourceIdx = cats.findIndex(c => c.id === sourceId)
+  const targetIdx = cats.findIndex(c => c.id === targetId)
+  if (sourceIdx === -1 || targetIdx === -1) return
+
+  // 重新计算order
+  const newCats = [...cats]
+  const [moved] = newCats.splice(sourceIdx, 1)
+  newCats.splice(targetIdx, 0, moved)
+  newCats.forEach((c, idx) => {
+    categoryStore.updateCategory(c.id, { order: idx + 1 })
+  })
+
+  dragId.value = null
+  dragOverId.value = null
+}
+
+function onDragEnd() {
+  dragId.value = null
+  dragOverId.value = null
+}
+
 const isActiveAll = computed(() => snippetStore.activeCategoryId === null)
 const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '__uncategorized__')
 </script>
 
 <template>
-  <aside class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col h-full">
-    <div class="p-4 border-b border-slate-200 dark:border-slate-700">
+  <!-- 移动端遮罩 -->
+  <div
+    v-if="mobileOpen"
+    class="fixed inset-0 z-40 bg-black/40 lg:hidden"
+    @click="emit('close-mobile')"
+  ></div>
+
+  <aside
+    class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col h-full transition-transform duration-300 z-50
+    fixed lg:static top-0 left-0 bottom-0 lg:translate-x-0"
+    :class="mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+  >
+    <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
       <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
         <Folder class="w-4 h-4" />
         分类管理
       </h2>
+      <button
+        class="lg:hidden p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400"
+        @click="emit('close-mobile')"
+      >
+        <X class="w-5 h-5" />
+      </button>
     </div>
 
     <div class="flex-1 overflow-y-auto py-2">
@@ -98,7 +179,7 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
       >
         <span class="flex items-center gap-2">
           <FolderOpen class="w-4 h-4" />
-          全部话术
+          全部复制板
         </span>
         <span class="text-xs opacity-70">{{ snippetStore.countByCategory(null) }}</span>
       </div>
@@ -123,10 +204,20 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
         v-for="cat in categoryStore.sortedCategories"
         :key="cat.id"
         class="category-item mx-2 px-3 py-2 rounded-md cursor-pointer flex items-center justify-between transition-all duration-200 group"
-        :class="snippetStore.activeCategoryId === cat.id
-          ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
-          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'"
+        :class="[
+          snippetStore.activeCategoryId === cat.id
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
+          dragOverId === cat.id ? 'ring-2 ring-indigo-400' : '',
+          dragId === cat.id ? 'opacity-50' : ''
+        ]"
+        draggable="true"
         @click="selectCategory(cat.id)"
+        @dragstart="onDragStart($event, cat.id)"
+        @dragover="onDragOver($event, cat.id)"
+        @dragleave="onDragLeave"
+        @drop="onDrop($event, cat.id)"
+        @dragend="onDragEnd"
       >
         <div v-if="editingId === cat.id" class="flex items-center gap-2 flex-1" @click.stop>
           <input
@@ -136,11 +227,22 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
             @keyup.esc="cancelEdit"
             autofocus
           />
+          <div class="flex gap-1">
+            <button
+              v-for="color in colorOptions.slice(0, 6)"
+              :key="color"
+              class="w-4 h-4 rounded-full border"
+              :class="editColor === color ? 'border-slate-700 dark:border-slate-200' : 'border-transparent'"
+              :style="{ backgroundColor: color }"
+              @click.stop="editColor = color"
+            />
+          </div>
           <button class="text-xs text-green-600 hover:text-green-700" @click.stop="saveEdit">保存</button>
           <button class="text-xs text-slate-400 hover:text-slate-600" @click.stop="cancelEdit">取消</button>
         </div>
         <template v-else>
           <span class="flex items-center gap-2 truncate">
+            <GripVertical class="w-3 h-3 text-slate-300 dark:text-slate-600 cursor-grab active:cursor-grabbing flex-shrink-0" />
             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: cat.color }"></span>
             <span class="truncate">{{ cat.name }}</span>
           </span>
