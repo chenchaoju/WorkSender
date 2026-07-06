@@ -16,6 +16,7 @@ const settingsStore = useSettingsStore()
 
 const editorVisible = ref(false)
 const editingSnippet = ref<Snippet | null>(null)
+const mobileSidebarOpen = ref(false)
 
 onMounted(() => {
   settingsStore.initTheme()
@@ -34,11 +35,11 @@ function openEditSnippet(snippet: Snippet) {
 function handleSave(data: Partial<Snippet>) {
   if (editingSnippet.value) {
     snippetStore.updateSnippet(editingSnippet.value.id, data)
-    ElMessage.success('话术已更新')
+    ElMessage.success('复制板已更新')
   } else {
     const newSnippet = snippetStore.addSnippet(data as any)
     snippetStore.selectSnippet(newSnippet.id)
-    ElMessage.success('话术已创建')
+    ElMessage.success('复制板已创建')
   }
   editorVisible.value = false
 }
@@ -67,24 +68,24 @@ function selectSnippet(snippet: Snippet) {
 
 <template>
   <div class="h-screen flex flex-col bg-slate-50 dark:bg-slate-900 transition-colors duration-300">
-    <AppHeader @new-snippet="openNewSnippet" />
+    <AppHeader @new-snippet="openNewSnippet" @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen" />
 
     <div class="flex-1 flex overflow-hidden">
-      <CategorySidebar />
+      <CategorySidebar :mobile-open="mobileSidebarOpen" @close-mobile="mobileSidebarOpen = false" />
 
       <main class="flex-1 overflow-hidden flex flex-col">
-        <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+        <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
           <div class="flex items-center justify-between">
             <div>
-              <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">
-                <template v-if="snippetStore.activeCategoryId === null">全部话术</template>
+              <h2 class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
+                <template v-if="snippetStore.activeCategoryId === null">全部复制板</template>
                 <template v-else-if="snippetStore.activeCategoryId === '__uncategorized__'">未分类</template>
                 <template v-else>
                   {{ snippetStore.filteredSnippets.length }} 条结果
                 </template>
               </h2>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                共 {{ snippetStore.filteredSnippets.length }} 条话术
+                共 {{ snippetStore.filteredSnippets.length }} 条复制板
                 <template v-if="snippetStore.searchKeyword">
                   · 搜索：{{ snippetStore.searchKeyword }}
                 </template>
@@ -99,18 +100,18 @@ function selectSnippet(snippet: Snippet) {
           </div>
         </div>
 
-        <div class="flex-1 overflow-y-auto p-6">
+        <div class="flex-1 overflow-y-auto p-4 sm:p-6">
           <div v-if="snippetStore.filteredSnippets.length === 0" class="h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
             <div class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
               <FileText class="w-10 h-10 opacity-50" />
             </div>
-            <p class="text-base font-medium">暂无话术</p>
+            <p class="text-base font-medium">暂无复制板</p>
             <p class="text-sm mt-1 opacity-70">
               <template v-if="snippetStore.searchKeyword">
                 没有找到匹配的结果，试试其他关键词
               </template>
               <template v-else>
-                点击右上角"新建话术"开始添加
+                点击右上角"新建复制板"开始添加
               </template>
             </p>
             <button
@@ -118,7 +119,7 @@ function selectSnippet(snippet: Snippet) {
               class="mt-6 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors"
               @click="openNewSnippet"
             >
-              创建第一条话术
+              创建第一条复制板
             </button>
           </div>
 
