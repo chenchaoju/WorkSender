@@ -146,7 +146,7 @@ const emit = defineEmits<{
       <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
       <label class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors cursor-pointer" title="导入数据">
-        <Upload class="w-5 h-5" />
+        <Download class="w-5 h-5" />
         <input type="file" accept=".json" class="hidden" @change="handleImport" />
       </label>
 
@@ -155,7 +155,7 @@ const emit = defineEmits<{
         title="导出数据"
         @click="handleExport"
       >
-        <Download class="w-5 h-5" />
+        <Upload class="w-5 h-5" />
       </button>
 
       <button
