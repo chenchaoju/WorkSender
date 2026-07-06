@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import type { Snippet } from '@/types'
 import { useCategoryStore } from '@/stores/categories'
-import { Copy, Check, Edit3, Trash2, X, Calendar, Tag, Folder } from 'lucide-vue-next'
+import { Copy, Check, Edit3, Trash2, X, Calendar, Folder } from 'lucide-vue-next'
 import { copyToClipboard } from '@/utils/clipboard'
 import { ElMessage } from 'element-plus'
 
@@ -104,22 +104,6 @@ const formattedDate = computed(() => {
           </div>
         </div>
 
-        <div v-if="snippet.tags.length > 0" class="mb-4">
-          <h4 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-            <Tag class="w-3.5 h-3.5" />
-            标签
-          </h4>
-          <div class="flex flex-wrap gap-1.5">
-            <span
-              v-for="tag in snippet.tags"
-              :key="tag"
-              class="px-2.5 py-1 text-xs bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 rounded-full"
-            >
-              #{{ tag }}
-            </span>
-          </div>
-        </div>
-
         <div class="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
           <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <Calendar class="w-3.5 h-3.5" />
@@ -155,7 +139,7 @@ const formattedDate = computed(() => {
         <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
           <Copy class="w-8 h-8 opacity-50" />
         </div>
-        <p class="text-sm">选择一个话术查看详情</p>
+        <p class="text-sm">选择一个复制板查看详情</p>
         <p class="text-xs mt-1 opacity-70">点击左侧卡片快速预览</p>
       </div>
     </template>

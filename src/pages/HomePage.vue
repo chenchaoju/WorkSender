@@ -1,15 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useSnippetStore } from '@/stores/snippets'
 import { useSettingsStore } from '@/stores/settings'
+import { useCategoryStore } from '@/stores/categories'
 import AppHeader from '@/components/AppHeader.vue'
 import CategorySidebar from '@/components/CategorySidebar.vue'
 import SnippetCard from '@/components/SnippetCard.vue'
 import SnippetDetail from '@/components/SnippetDetail.vue'
 import SnippetEditor from '@/components/SnippetEditor.vue'
 import type { Snippet } from '@/types'
-import { FileText, Plus } from 'lucide-vue-next'
+import { FileText, Plus, FileJson } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { importFromJson } from '@/utils/export'
+
+const categoryStore = useCategoryStore()
 
 const snippetStore = useSnippetStore()
 const settingsStore = useSettingsStore()
@@ -17,8 +21,98 @@ const settingsStore = useSettingsStore()
 const editorVisible = ref(false)
 const editingSnippet = ref<Snippet | null>(null)
 
+const isDraggingFile = ref(false)
+let dragCounter = 0
+
+function isJsonFileDrag(e: DragEvent): boolean {
+  if (!e.dataTransfer) return false
+  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+    return [...e.dataTransfer.files].some(f => f.name.toLowerCase().endsWith('.json') || f.type === 'application/json')
+  }
+  if (e.dataTransfer.types) {
+    return [...e.dataTransfer.types].includes('Files')
+  }
+  return false
+}
+
+function handleDragEnter(e: DragEvent) {
+  if (!isJsonFileDrag(e)) return
+  e.preventDefault()
+  dragCounter++
+  isDraggingFile.value = true
+}
+
+function handleDragLeave(e: DragEvent) {
+  if (!isJsonFileDrag(e)) return
+  e.preventDefault()
+  dragCounter--
+  if (dragCounter <= 0) {
+    dragCounter = 0
+    isDraggingFile.value = false
+  }
+}
+
+function handleDragOver(e: DragEvent) {
+  if (!isJsonFileDrag(e)) return
+  e.preventDefault()
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+async function handleDrop(e: DragEvent) {
+  if (!isJsonFileDrag(e)) return
+  e.preventDefault()
+  dragCounter = 0
+  isDraggingFile.value = false
+
+  const files = e.dataTransfer?.files
+  if (!files || files.length === 0) return
+
+  const jsonFile = [...files].find(f =>
+    f.name.toLowerCase().endsWith('.json') || f.type === 'application/json'
+  )
+  if (!jsonFile) {
+    ElMessage.warning('请拖入 JSON 数据文件')
+    return
+  }
+
+  try {
+    const data = await importFromJson(jsonFile)
+    await ElMessageBox.confirm(
+      `检测到 ${data.snippets.length} 条复制板和 ${data.categories.length} 个分类。\n是否导入？将覆盖现有数据。`,
+      '确认导入',
+      {
+        confirmButtonText: '导入覆盖',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+    if (data.categories.length > 0) {
+      categoryStore.categories.length = 0
+      categoryStore.categories.push(...data.categories)
+    }
+    snippetStore.clearAll()
+    snippetStore.importSnippets(data.snippets)
+    ElMessage.success(`成功导入 ${data.snippets.length} 条复制板`)
+  } catch (err) {
+    ElMessage.error(err instanceof Error ? err.message : '导入失败')
+  }
+}
+
 onMounted(() => {
   settingsStore.initTheme()
+  window.addEventListener('dragenter', handleDragEnter)
+  window.addEventListener('dragover', handleDragOver)
+  window.addEventListener('dragleave', handleDragLeave)
+  window.addEventListener('drop', handleDrop)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('dragenter', handleDragEnter)
+  window.removeEventListener('dragover', handleDragOver)
+  window.removeEventListener('dragleave', handleDragLeave)
+  window.removeEventListener('drop', handleDrop)
 })
 
 function openNewSnippet() {
@@ -34,11 +128,11 @@ function openEditSnippet(snippet: Snippet) {
 function handleSave(data: Partial<Snippet>) {
   if (editingSnippet.value) {
     snippetStore.updateSnippet(editingSnippet.value.id, data)
-    ElMessage.success('话术已更新')
+    ElMessage.success('复制板已更新')
   } else {
     const newSnippet = snippetStore.addSnippet(data as any)
     snippetStore.selectSnippet(newSnippet.id)
-    ElMessage.success('话术已创建')
+    ElMessage.success('复制板已创建')
   }
   editorVisible.value = false
 }
@@ -77,14 +171,14 @@ function selectSnippet(snippet: Snippet) {
           <div class="flex items-center justify-between">
             <div>
               <h2 class="text-lg font-bold text-slate-800 dark:text-slate-100">
-                <template v-if="snippetStore.activeCategoryId === null">全部话术</template>
+                <template v-if="snippetStore.activeCategoryId === null">全部复制板</template>
                 <template v-else-if="snippetStore.activeCategoryId === '__uncategorized__'">未分类</template>
                 <template v-else>
                   {{ snippetStore.filteredSnippets.length }} 条结果
                 </template>
               </h2>
               <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                共 {{ snippetStore.filteredSnippets.length }} 条话术
+                共 {{ snippetStore.filteredSnippets.length }} 条复制板
                 <template v-if="snippetStore.searchKeyword">
                   · 搜索：{{ snippetStore.searchKeyword }}
                 </template>
@@ -104,13 +198,13 @@ function selectSnippet(snippet: Snippet) {
             <div class="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
               <FileText class="w-10 h-10 opacity-50" />
             </div>
-            <p class="text-base font-medium">暂无话术</p>
+            <p class="text-base font-medium">暂无复制板</p>
             <p class="text-sm mt-1 opacity-70">
               <template v-if="snippetStore.searchKeyword">
                 没有找到匹配的结果，试试其他关键词
               </template>
               <template v-else>
-                点击右上角"新建话术"开始添加
+                点击右上角"新建复制板"开始添加
               </template>
             </p>
             <button
@@ -118,7 +212,7 @@ function selectSnippet(snippet: Snippet) {
               class="mt-6 px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-colors"
               @click="openNewSnippet"
             >
-              创建第一条话术
+              创建第一条复制板
             </button>
           </div>
 
@@ -158,5 +252,46 @@ function selectSnippet(snippet: Snippet) {
       @close="editorVisible = false"
       @save="handleSave"
     />
+
+    <Teleport to="body">
+      <div
+        v-if="isDraggingFile"
+        class="fixed inset-0 z-[100] flex items-center justify-center bg-indigo-500/20 backdrop-blur-sm pointer-events-none animate-fadeIn"
+      >
+        <div class="bg-white/90 dark:bg-slate-800/90 rounded-2xl shadow-2xl p-12 text-center border-2 border-dashed border-indigo-400 dark:border-indigo-500 animate-bounceIn">
+          <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+            <FileJson class="w-10 h-10 text-indigo-500 dark:text-indigo-400" />
+          </div>
+          <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">松开即可导入</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400">拖入 JSON 数据文件以导入复制板和分类</p>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes bounceIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out;
+}
+
+.animate-bounceIn {
+  animation: bounceIn 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+</style>
