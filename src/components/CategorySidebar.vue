@@ -289,33 +289,7 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
       </div>
     </div>
 
-    <div v-if="!props.desktopCollapsed" class="p-3 border-t border-slate-200 dark:border-slate-700">
-      <div class="flex gap-2 mb-2">
-        <input
-          v-model="newCatName"
-          type="text"
-          placeholder="新分类名称"
-          class="flex-1 px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-          @keyup.enter="addCategory"
-        />
-        <button
-          class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors flex items-center gap-1"
-          @click="addCategory"
-        >
-          <Plus class="w-4 h-4" />
-        </button>
-      </div>
-      <div class="flex gap-1.5 flex-wrap">
-        <button
-          v-for="color in colorOptions"
-          :key="color"
-          class="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
-          :class="newCatColor === color ? 'border-slate-700 dark:border-slate-200 scale-110' : 'border-transparent'"
-          :style="{ backgroundColor: color }"
-          @click="newCatColor = color"
-        />
-      </div>
-    </div>
+    
   </aside>
 </template>
 

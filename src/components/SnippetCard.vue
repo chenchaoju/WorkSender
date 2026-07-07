@@ -191,6 +191,88 @@ function previewText(content: string): string {
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div
+      v-if="isExpanded"
+      class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden sm:hidden lg:hidden"
+      @click="emit('expand')"
+    >
+      <div class="fixed inset-4 sm:inset-8 md:hidden bg-white dark:bg-slate-800 rounded-xl shadow-2xl overflow-hidden flex flex-col animate-scaleIn">
+        <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+            <component :is="getTypeIcon()" class="w-4 h-4 text-slate-400" />
+            {{ snippet.title }}
+            <span class="text-xs text-slate-400 font-normal">{{ getTypeLabel() }}</span>
+          </h3>
+          <div class="flex items-center gap-2">
+            <button
+              class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+              @click.stop="emit('edit')"
+            >
+              <Edit3 class="w-4 h-4" />
+            </button>
+            <button
+              class="p-2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-400"
+              @click.stop="emit('expand')"
+            >
+              <X class="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4">
+          <div v-if="snippet.type === 'image' && snippet.imageUrl" class="mb-4">
+            <img
+              :src="snippet.imageUrl"
+              :alt="snippet.title"
+              class="rounded-lg w-full max-h-64 object-contain"
+              @click.stop="handleCopyImage"
+            />
+          </div>
+
+          <div v-else-if="snippet.type === 'multi' && snippet.items && snippet.items.length > 0" class="space-y-3">
+            <div
+              v-for="(item, idx) in snippet.items"
+              :key="item.id"
+              class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+              @click.stop="handleCopyItem($event, item.content, item.imageUrl)"
+            >
+              <img
+                v-if="item.itemType === 'image' && item.imageUrl"
+                :src="item.imageUrl"
+                class="w-16 h-16 object-cover rounded"
+              />
+              <div v-else class="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center">
+                <FileText class="w-5 h-5 text-slate-400" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm text-slate-800 dark:text-slate-100 truncate">
+                  {{ item.label || item.content || (item.imageUrl ? '图片' : '空') }}
+                </p>
+                <p v-if="item.content && item.itemType === 'image'" class="text-xs text-slate-500">{{ item.content }}</p>
+              </div>
+              <Copy class="w-4 h-4 text-slate-400" />
+            </div>
+          </div>
+
+          <p v-else class="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">
+            {{ snippet.content }}
+          </p>
+
+          <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <span class="flex items-center gap-2 text-sm text-slate-500">
+              <span
+                class="w-2.5 h-2.5 rounded-full"
+                :style="{ backgroundColor: categoryStore.getCategoryColor(snippet.categoryId) }"
+              ></span>
+              {{ categoryStore.getCategoryName(snippet.categoryId) }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -214,5 +296,20 @@ function previewText(content: string): string {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scaleIn {
+  animation: scaleIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>

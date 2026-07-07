@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Search, Plus, Sun, Moon, Download, Upload, Trash2, Info, Grid3X3, List, Menu } from 'lucide-vue-next'
+import { Search, Plus, Sun, Moon, Download, Upload, Trash2, Info, Grid3X3, List, Menu, FolderPlus } from 'lucide-vue-next'
 import { useSettingsStore } from '@/stores/settings'
 import { useSnippetStore } from '@/stores/snippets'
 import { useCategoryStore } from '@/stores/categories'
@@ -12,11 +12,31 @@ const snippetStore = useSnippetStore()
 const categoryStore = useCategoryStore()
 
 const searchInput = ref('')
+const showNewCategory = ref(false)
+const newCatName = ref('')
+const newCatColor = ref('#3b82f6')
+
+const colorOptions = [
+  '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+  '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16',
+  '#f97316', '#6366f1',
+]
 
 const emit = defineEmits<{
   (e: 'newSnippet'): void
   (e: 'toggleSidebar'): void
 }>()
+
+function addCategory() {
+  if (!newCatName.value.trim()) {
+    ElMessage.warning('请输入分类名称')
+    return
+  }
+  categoryStore.addCategory(newCatName.value.trim(), newCatColor.value)
+  newCatName.value = ''
+  showNewCategory.value = false
+  ElMessage.success('分类已创建')
+}
 
 function handleSearch() {
   snippetStore.setSearchKeyword(searchInput.value)
@@ -175,6 +195,14 @@ async function handleClearAll() {
         <Trash2 class="w-5 h-5" />
       </button>
 
+      <button
+        class="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 hover:text-indigo-500 transition-colors"
+        title="新建分类"
+        @click="showNewCategory = !showNewCategory"
+      >
+        <FolderPlus class="w-5 h-5" />
+      </button>
+
       <div class="h-6 w-px bg-slate-200 dark:bg-slate-700 mx-1"></div>
 
       <button
@@ -184,6 +212,39 @@ async function handleClearAll() {
         <Plus class="w-4 h-4" />
         <span class="hidden sm:inline">新建剪切板</span>
       </button>
+    </div>
+
+    <div
+      v-if="showNewCategory"
+      class="absolute top-full right-4 mt-2 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 p-3 z-50"
+    >
+      <div class="text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">新建分类</div>
+      <div class="flex gap-2 mb-2">
+        <input
+          v-model="newCatName"
+          type="text"
+          placeholder="分类名称"
+          class="flex-1 px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500"
+          @keyup.enter="addCategory"
+          autofocus
+        />
+        <button
+          class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-md transition-colors"
+          @click="addCategory"
+        >
+          确定
+        </button>
+      </div>
+      <div class="flex gap-1.5 flex-wrap">
+        <button
+          v-for="color in colorOptions"
+          :key="color"
+          class="w-5 h-5 rounded-full border-2 transition-transform hover:scale-110"
+          :class="newCatColor === color ? 'border-slate-700 dark:border-slate-200 scale-110' : 'border-transparent'"
+          :style="{ backgroundColor: color }"
+          @click="newCatColor = color"
+        />
+      </div>
     </div>
   </header>
 </template>
