@@ -182,7 +182,7 @@ async function handleClearAll() {
         @click="emit('newSnippet')"
       >
         <Plus class="w-4 h-4" />
-        <span class="hidden sm:inline">新建复制板</span>
+        <span class="hidden sm:inline">新建剪切板</span>
       </button>
     </div>
   </header>

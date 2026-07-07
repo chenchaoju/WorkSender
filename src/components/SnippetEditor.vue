@@ -2,6 +2,7 @@
 import { ref, watch, computed, onBeforeUnmount, onMounted, nextTick } from 'vue'
 import type { Snippet, SnippetItem } from '@/types'
 import { useCategoryStore } from '@/stores/categories'
+import { useSnippetStore } from '@/stores/snippets'
 import { X, Image as ImageIcon, Type, Link as LinkIcon, List, Trash2, GripVertical, ClipboardPaste, Check } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { generateId } from '@/utils/storage'
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const categoryStore = useCategoryStore()
+const snippetStore = useSnippetStore()
 
 const title = ref('')
 const content = ref('')
@@ -298,14 +300,14 @@ watch(() => props.visible, async (val) => {
         enabledTypes.value.image = !!hasImage
       }
     } else {
-      title.value = ''
       content.value = ''
       categoryId.value = null
       type.value = 'text'
       imageUrl.value = ''
       items.value = []
       enabledTypes.value = { text: true, image: false, link: false }
-      // 打开弹窗时自动读取剪贴板
+      const count = snippetStore.snippets.length
+      title.value = `标题${count + 1}`
       nextTick(async () => {
         const text = await tryReadClipboard()
         if (text && text.trim()) {
