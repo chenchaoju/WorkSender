@@ -5,7 +5,6 @@ import { useSettingsStore } from '@/stores/settings'
 import AppHeader from '@/components/AppHeader.vue'
 import CategorySidebar from '@/components/CategorySidebar.vue'
 import SnippetCard from '@/components/SnippetCard.vue'
-import SnippetDetail from '@/components/SnippetDetail.vue'
 import SnippetEditor from '@/components/SnippetEditor.vue'
 import type { Snippet } from '@/types'
 import { FileText, Plus } from 'lucide-vue-next'
@@ -18,6 +17,7 @@ const editorVisible = ref(false)
 const editingSnippet = ref<Snippet | null>(null)
 const mobileSidebarOpen = ref(false)
 const desktopSidebarCollapsed = ref(false)
+const expandedCardId = ref<string | null>(null)
 
 onMounted(() => {
   settingsStore.initTheme()
@@ -38,8 +38,7 @@ function handleSave(data: Partial<Snippet>) {
     snippetStore.updateSnippet(editingSnippet.value.id, data)
     ElMessage.success('复制板已更新')
   } else {
-    const newSnippet = snippetStore.addSnippet(data as any)
-    snippetStore.selectSnippet(newSnippet.id)
+    snippetStore.addSnippet(data as any)
     ElMessage.success('复制板已创建')
   }
   editorVisible.value = false
@@ -62,8 +61,8 @@ async function handleDelete(snippet: Snippet) {
   }
 }
 
-function selectSnippet(snippet: Snippet) {
-  snippetStore.selectSnippet(snippet.id)
+function toggleExpand(id: string) {
+  expandedCardId.value = expandedCardId.value === id ? null : id
 }
 </script>
 
@@ -140,23 +139,15 @@ function selectSnippet(snippet: Snippet) {
               v-for="(snippet, index) in snippetStore.filteredSnippets"
               :key="snippet.id"
               :snippet="snippet"
-              :is-selected="snippetStore.selectedSnippetId === snippet.id"
+              :is-expanded="expandedCardId === snippet.id"
               :style="{ animationDelay: `${index * 30}ms` }"
-              @select="selectSnippet(snippet)"
+              @expand="toggleExpand(snippet.id)"
               @edit="openEditSnippet(snippet)"
               @delete="handleDelete(snippet)"
             />
           </div>
         </div>
       </main>
-
-      <SnippetDetail
-        :snippet="snippetStore.selectedSnippet"
-        @close="snippetStore.selectSnippet(null)"
-        v-if="snippetStore.selectedSnippet"
-        @edit="openEditSnippet(snippetStore.selectedSnippet!)"
-        @delete="handleDelete(snippetStore.selectedSnippet!)"
-      />
     </div>
 
     <SnippetEditor

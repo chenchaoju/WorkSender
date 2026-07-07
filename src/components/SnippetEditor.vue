@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, computed, onBeforeUnmount, onMounted, nextTick } from 'vue'
+import { ref, watch, computed, onBeforeUnmount, nextTick } from 'vue'
 import type { Snippet, SnippetItem } from '@/types'
 import { useCategoryStore } from '@/stores/categories'
 import { useSnippetStore } from '@/stores/snippets'
-import { X, Image as ImageIcon, Type, Link as LinkIcon, List, Trash2, GripVertical, ClipboardPaste, Check } from 'lucide-vue-next'
+import { X, Image as ImageIcon, Type, List, Trash2, GripVertical, ClipboardPaste, Check, Plus } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import { generateId } from '@/utils/storage'
 
@@ -23,22 +23,17 @@ const snippetStore = useSnippetStore()
 const title = ref('')
 const content = ref('')
 const categoryId = ref<string | null>(null)
-const type = ref<'text' | 'image' | 'link' | 'multi'>('text')
+const type = ref<'text' | 'image' | 'multi'>('text')
 const imageUrl = ref('')
 const items = ref<SnippetItem[]>([])
 const dragOver = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const previewImage = ref('')
-const contentInputRef = ref<HTMLTextAreaElement | null>(null)
 
 const isEdit = computed(() => !!props.snippet)
-const dialogTitle = computed(() => isEdit.value ? '编辑复制板' : '新建复制板')
+const dialogTitle = computed(() => isEdit.value ? '编辑复制板' : '新建剪切板')
 
-const enabledTypes = ref({
-  text: true,
-  image: false,
-  link: false,
-})
+const enableMultiple = ref(false)
 
 function readImageFile(file: File, cb: (base64: string) => void) {
   const reader = new FileReader()
@@ -46,10 +41,6 @@ function readImageFile(file: File, cb: (base64: string) => void) {
     cb(ev.target?.result as string)
   }
   reader.readAsDataURL(file)
-}
-
-function readClipboardAsText(): string {
-  return ''
 }
 
 async function tryReadClipboard() {
@@ -61,34 +52,86 @@ async function tryReadClipboard() {
       }
     }
   } catch (e) {
-    // 用户可能拒绝了权限
   }
   return ''
+}
+
+async function tryReadClipboardImage() {
+  try {
+    if (navigator.clipboard && navigator.clipboard.read) {
+      const clipboardItems = await navigator.clipboard.read()
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
+          if (type.startsWith('image/')) {
+            const blob = await item.getType(type)
+            return blob
+          }
+        }
+      }
+    }
+  } catch (e) {
+  }
+  return null
 }
 
 function handlePaste(e: ClipboardEvent) {
   if (!props.visible) return
   const clipboardItems = e.clipboardData?.items
   if (!clipboardItems) return
+  let hasImage = false
   for (const item of clipboardItems) {
     if (item.type.startsWith('image/')) {
+      hasImage = true
       e.preventDefault()
       const file = item.getAsFile()
       if (file) {
-        handleImageFile(file)
+        addImageFromFile(file)
       }
-      return
+    }
+  }
+  if (!hasImage) {
+    const text = e.clipboardData?.getData('text')
+    if (text && text.trim()) {
+      addTextFromClipboard(text)
     }
   }
 }
 
-function handleImageFile(file: File) {
-  if (type.value === 'multi') {
-    addImageItem(file)
+function addImageFromFile(file: File) {
+  readImageFile(file, (img) => {
+    if (enableMultiple.value || type.value === 'multi') {
+      items.value.push({
+        id: generateId(),
+        label: file.name,
+        content: '',
+        itemType: 'image',
+        imageUrl: img,
+      })
+      ElMessage.success('图片已添加到列表')
+    } else {
+      imageUrl.value = img
+      type.value = 'image'
+      ElMessage.success('图片已添加')
+    }
+  })
+}
+
+function addTextFromClipboard(text: string) {
+  if (enableMultiple.value || type.value === 'multi') {
+    items.value.push({
+      id: generateId(),
+      label: '',
+      content: text,
+      itemType: 'text',
+    })
+    ElMessage.success('文本已添加到列表')
   } else {
-    if (!enabledTypes.value.image) enabledTypes.value.image = true
-    readImageFile(file, (img) => { imageUrl.value = img })
-    ElMessage.success('图片已添加')
+    content.value = text
+    type.value = 'text'
+    if (!title.value) {
+      title.value = text.substring(0, 20).replace(/\n/g, ' ')
+    }
+    ElMessage.success('文本已添加')
   }
 }
 
@@ -97,15 +140,10 @@ function handleDrop(e: DragEvent) {
   dragOver.value = false
   const files = e.dataTransfer?.files
   if (files && files.length > 0) {
-    let imgCount = 0
     for (const file of files) {
       if (file.type.startsWith('image/')) {
-        imgCount++
-        handleImageFile(file)
+        addImageFromFile(file)
       }
-    }
-    if (imgCount > 0 && type.value !== 'multi') {
-      ElMessage.success(`已添加 ${imgCount} 张图片`)
     }
   }
 }
@@ -123,25 +161,17 @@ function removeImage() {
   imageUrl.value = ''
 }
 
-function addTextItem(prefill = '') {
+function addTextItem() {
   items.value.push({
     id: generateId(),
     label: '',
-    content: prefill,
+    content: '',
     itemType: 'text',
   })
 }
 
-function addImageItem(file: File) {
-  readImageFile(file, (img) => {
-    items.value.push({
-      id: generateId(),
-      label: '',
-      content: '',
-      itemType: 'image',
-      imageUrl: img,
-    })
-  })
+function addImageItem() {
+  fileInput.value?.click()
 }
 
 function removeItem(idx: number) {
@@ -162,7 +192,6 @@ function moveItemDown(idx: number) {
   items.value[idx + 1] = temp
 }
 
-// 拖拽排序
 const itemDragId = ref<string | null>(null)
 const itemDragOverId = ref<string | null>(null)
 
@@ -214,68 +243,18 @@ function closePreview() {
   previewImage.value = ''
 }
 
-function toggleType(t: 'text' | 'image' | 'link') {
-  enabledTypes.value[t] = !enabledTypes.value[t]
-  if (!enabledTypes.value.text && !enabledTypes.value.image && !enabledTypes.value.link) {
-    enabledTypes.value.text = true
-  }
-  // 切换主类型显示
-  if (t === 'image' && enabledTypes.value.image && !imageUrl.value) {
-    // 保持当前image
-  }
-  // 多条混合：需要至少勾选了某种类型
-  if (enabledTypes.value.text || enabledTypes.value.image || enabledTypes.value.link) {
-    type.value = 'multi'
-  }
-}
-
 async function handlePasteFromClipboard() {
   const text = await tryReadClipboard()
-  if (!text) {
-    ElMessage.warning('剪贴板为空或无法访问')
-    return
-  }
-  // 自动检测：是否为链接
-  const isLink = /^https?:\/\/\S+$/i.test(text.trim())
-  if (isLink) {
-    enabledTypes.value.link = true
-    enabledTypes.value.text = false
-    enabledTypes.value.image = false
-    if (!title.value) {
-      title.value = text.trim().substring(0, 30)
-    }
-    content.value = text.trim()
-    ElMessage.success('已识别为链接')
+  const imageBlob = await tryReadClipboardImage()
+  
+  if (imageBlob) {
+    const file = new File([imageBlob], 'clipboard-image.png', { type: imageBlob.type })
+    addImageFromFile(file)
+  } else if (text) {
+    addTextFromClipboard(text)
   } else {
-    enabledTypes.value.text = true
-    content.value = text
-    if (!title.value) {
-      title.value = text.substring(0, 20).replace(/\n/g, ' ')
-    }
-    ElMessage.success('已从剪贴板读取文本')
+    ElMessage.warning('剪贴板为空')
   }
-  type.value = 'multi'
-}
-
-async function handlePasteImageFromClipboard() {
-  try {
-    if (navigator.clipboard && navigator.clipboard.read) {
-      const items = await navigator.clipboard.read()
-      for (const item of items) {
-        for (const type of item.types) {
-          if (type.startsWith('image/')) {
-            const blob = await item.getType(type)
-            const file = new File([blob], 'pasted-image.png', { type })
-            handleImageFile(file)
-            return
-          }
-        }
-      }
-    }
-  } catch (e) {
-    // 浏览器权限限制，使用普通粘贴监听
-  }
-  ElMessage.warning('请使用 Ctrl+V 粘贴图片，或直接拖入图片')
 }
 
 watch(() => props.visible, async (val) => {
@@ -284,43 +263,38 @@ watch(() => props.visible, async (val) => {
       title.value = props.snippet.title
       content.value = props.snippet.content
       categoryId.value = props.snippet.categoryId
-      type.value = props.snippet.type
+      type.value = props.snippet.type === 'link' ? 'text' : props.snippet.type
       imageUrl.value = props.snippet.imageUrl || ''
       items.value = props.snippet.items ? props.snippet.items.map(i => ({ ...i })) : []
-      // 还原勾选状态
-      enabledTypes.value = { text: true, image: false, link: false }
-      if (props.snippet.type === 'image') {
-        enabledTypes.value.image = true
-        enabledTypes.value.text = false
-      } else if (props.snippet.type === 'link') {
-        enabledTypes.value.link = true
-        enabledTypes.value.text = false
-      } else if (props.snippet.type === 'multi') {
-        const hasImage = props.snippet.items?.some(i => i.itemType === 'image')
-        enabledTypes.value.image = !!hasImage
-      }
+      enableMultiple.value = props.snippet.type === 'multi'
     } else {
       content.value = ''
       categoryId.value = null
       type.value = 'text'
       imageUrl.value = ''
       items.value = []
-      enabledTypes.value = { text: true, image: false, link: false }
+      enableMultiple.value = false
       const count = snippetStore.snippets.length
       title.value = `标题${count + 1}`
       nextTick(async () => {
         const text = await tryReadClipboard()
-        if (text && text.trim()) {
-          const isLink = /^https?:\/\/\S+$/i.test(text.trim())
-          if (isLink) {
-            enabledTypes.value.link = true
-            enabledTypes.value.text = false
-          }
+        const imageBlob = await tryReadClipboardImage()
+        if (imageBlob) {
+          enableMultiple.value = true
+          const file = new File([imageBlob], 'clipboard-image.png', { type: imageBlob.type })
+          readImageFile(file, (img) => {
+            items.value.push({
+              id: generateId(),
+              label: '剪贴板图片',
+              content: '',
+              itemType: 'image',
+              imageUrl: img,
+            })
+          })
+        } else if (text && text.trim()) {
           content.value = text
           if (!title.value) {
-            title.value = isLink
-              ? text.trim().substring(0, 30)
-              : text.substring(0, 20).replace(/\n/g, ' ')
+            title.value = text.substring(0, 20).replace(/\n/g, ' ')
           }
         }
       })
@@ -337,33 +311,58 @@ onBeforeUnmount(() => {
   document.removeEventListener('paste', handlePaste)
 })
 
-function handleSave() {
-  if (!title.value.trim()) {
-    ElMessage.warning('请输入标题')
-    return
-  }
-
-  // 多条混合类型
-  if (type.value === 'multi' || enabledTypes.value.image) {
-    const validItems: SnippetItem[] = []
-    if (enabledTypes.value.text && content.value.trim()) {
-      validItems.push({
+watch(enableMultiple, (val) => {
+  if (val) {
+    type.value = 'multi'
+    if (content.value.trim()) {
+      items.value.unshift({
         id: generateId(),
         label: '',
         content: content.value,
         itemType: 'text',
       })
+      content.value = ''
     }
-    if (enabledTypes.value.image && imageUrl.value) {
-      validItems.push({
+    if (imageUrl.value) {
+      items.value.push({
         id: generateId(),
         label: '',
         content: '',
         itemType: 'image',
         imageUrl: imageUrl.value,
       })
+      imageUrl.value = ''
     }
-    items.value.forEach(i => validItems.push(i))
+  } else {
+    type.value = 'text'
+    if (items.value.length === 1) {
+      const item = items.value[0]
+      if (item.itemType === 'text') {
+        content.value = item.content
+      } else if (item.itemType === 'image') {
+        imageUrl.value = item.imageUrl || ''
+        type.value = 'image'
+      }
+      items.value = []
+    }
+  }
+})
+
+function handleSave() {
+  if (!title.value.trim()) {
+    ElMessage.warning('请输入标题')
+    return
+  }
+
+  if (enableMultiple.value || type.value === 'multi') {
+    const validItems: SnippetItem[] = []
+    items.value.forEach(i => {
+      if (i.itemType === 'text' && i.content.trim()) {
+        validItems.push({ ...i })
+      } else if (i.itemType === 'image' && i.imageUrl) {
+        validItems.push({ ...i })
+      }
+    })
 
     if (validItems.length === 0) {
       ElMessage.warning('请至少添加一项内容')
@@ -377,30 +376,32 @@ function handleSave() {
       items: validItems,
       imageUrl: undefined,
     })
-  } else if (enabledTypes.value.link) {
-    if (!content.value.trim()) {
-      ElMessage.warning('请输入链接地址')
-      return
-    }
-    emit('save', {
-      title: title.value.trim(),
-      content: content.value,
-      categoryId: categoryId.value,
-      type: 'link',
-      imageUrl: undefined,
-    })
   } else {
-    if (!content.value.trim()) {
-      ElMessage.warning('请输入内容')
-      return
+    if (type.value === 'image') {
+      if (!imageUrl.value) {
+        ElMessage.warning('请添加图片')
+        return
+      }
+      emit('save', {
+        title: title.value.trim(),
+        content: '',
+        categoryId: categoryId.value,
+        type: 'image',
+        imageUrl: imageUrl.value,
+      })
+    } else {
+      if (!content.value.trim()) {
+        ElMessage.warning('请输入内容')
+        return
+      }
+      emit('save', {
+        title: title.value.trim(),
+        content: content.value,
+        categoryId: categoryId.value,
+        type: 'text',
+        imageUrl: undefined,
+      })
     }
-    emit('save', {
-      title: title.value.trim(),
-      content: content.value,
-      categoryId: categoryId.value,
-      type: 'text',
-      imageUrl: undefined,
-    })
   }
 }
 </script>
@@ -435,55 +436,43 @@ function handleSave() {
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">类型（可多选）</label>
+            <label class="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">类型</label>
             <div class="flex flex-wrap gap-2">
               <label
                 class="px-4 py-2 rounded-lg border text-sm font-medium transition-all flex items-center gap-2 cursor-pointer select-none"
-                :class="enabledTypes.text
+                :class="type === 'text' && !enableMultiple
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
                   : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'"
+                @click="type = 'text'; enableMultiple = false"
               >
-                <input
-                  type="checkbox"
-                  v-model="enabledTypes.text"
-                  class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  @change="type = 'multi'"
-                />
                 <Type class="w-4 h-4" />
                 纯文本
               </label>
               <label
                 class="px-4 py-2 rounded-lg border text-sm font-medium transition-all flex items-center gap-2 cursor-pointer select-none"
-                :class="enabledTypes.image
+                :class="type === 'image' && !enableMultiple
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
                   : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'"
+                @click="type = 'image'; enableMultiple = false"
               >
-                <input
-                  type="checkbox"
-                  v-model="enabledTypes.image"
-                  class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  @change="type = 'multi'"
-                />
                 <ImageIcon class="w-4 h-4" />
                 图片
               </label>
               <label
                 class="px-4 py-2 rounded-lg border text-sm font-medium transition-all flex items-center gap-2 cursor-pointer select-none"
-                :class="enabledTypes.link
+                :class="enableMultiple || type === 'multi'
                   ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
                   : 'border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-500'"
               >
                 <input
                   type="checkbox"
-                  v-model="enabledTypes.link"
+                  v-model="enableMultiple"
                   class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                  @change="type = 'multi'"
                 />
-                <LinkIcon class="w-4 h-4" />
-                链接
+                <List class="w-4 h-4" />
+                多条记录（文本+图片混合）
               </label>
             </div>
-            <p class="text-xs text-slate-400 mt-1.5">勾选多个类型将保存为多条混合</p>
           </div>
 
           <div>
@@ -499,8 +488,7 @@ function handleSave() {
             </select>
           </div>
 
-          <!-- 纯文本内容区 -->
-          <div v-if="enabledTypes.text">
+          <div v-if="!enableMultiple && type === 'text'">
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">文本内容</label>
               <button
@@ -515,18 +503,17 @@ function handleSave() {
             <textarea
               v-model="content"
               rows="6"
-              :placeholder="enabledTypes.link ? '输入链接地址...' : '输入文本内容（可粘贴）...'"
+              placeholder="输入文本内容（可粘贴）..."
               class="w-full px-3.5 py-2.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none font-mono text-sm leading-relaxed"
             ></textarea>
           </div>
 
-          <!-- 图片内容区 -->
-          <div v-if="enabledTypes.image">
+          <div v-if="!enableMultiple && type === 'image'">
             <div class="flex items-center justify-between mb-1.5">
               <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">图片</label>
               <button
                 class="text-xs text-indigo-500 hover:text-indigo-600 flex items-center gap-1"
-                @click="handlePasteImageFromClipboard"
+                @click="handlePasteFromClipboard"
                 title="从剪贴板读取"
               >
                 <ClipboardPaste class="w-3.5 h-3.5" />
@@ -558,43 +545,50 @@ function handleSave() {
             </div>
           </div>
 
-          <!-- 多条子项列表（多类型时显示） -->
-          <div v-if="items.length > 0">
-            <div class="flex items-center justify-between mb-2 mt-4">
-              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">子项列表（{{ items.length }} 项）拖动可排序</label>
+          <div v-if="enableMultiple">
+            <div class="flex items-center justify-between mb-2">
+              <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">多条记录（{{ items.length }} 项）拖动可排序</label>
               <div class="flex gap-2">
                 <button
                   class="px-3 py-1.5 bg-slate-600 hover:bg-slate-700 text-white text-xs rounded-md transition-colors flex items-center gap-1"
                   @click="addTextItem()"
                 >
-                  <Type class="w-3.5 h-3.5" />
+                  <Plus class="w-3.5 h-3.5" />
                   添加文本
                 </button>
                 <button
                   class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs rounded-md transition-colors flex items-center gap-1"
-                  @click="fileInput?.click()"
+                  @click="addImageItem()"
                 >
-                  <ImageIcon class="w-3.5 h-3.5" />
+                  <Plus class="w-3.5 h-3.5" />
                   添加图片
                 </button>
-                <input
-                  ref="fileInput"
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  class="hidden"
-                  @change="(e) => {
-                    const input = e.target as HTMLInputElement
-                    if (input.files) {
-                      for (const f of input.files) {
-                        if (f.type.startsWith('image/')) addImageItem(f)
-                      }
-                    }
-                    input.value = ''
-                  }"
-                />
+                <button
+                  class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-md transition-colors flex items-center gap-1"
+                  @click="handlePasteFromClipboard"
+                >
+                  <ClipboardPaste class="w-3.5 h-3.5" />
+                  从剪贴板添加
+                </button>
               </div>
             </div>
+
+            <input
+              ref="fileInput"
+              type="file"
+              accept="image/*"
+              multiple
+              class="hidden"
+              @change="(e) => {
+                const input = e.target as HTMLInputElement
+                if (input.files) {
+                  for (const f of input.files) {
+                    if (f.type.startsWith('image/')) addImageFromFile(f)
+                  }
+                }
+                input.value = ''
+              }"
+            />
 
             <div class="space-y-2">
               <div
@@ -654,11 +648,11 @@ function handleSave() {
                     </button>
                   </div>
                 </div>
-                <div v-if="item.itemType === 'image'" class="flex gap-3 mt-2">
+                <div v-if="item.itemType === 'image' && item.imageUrl" class="flex gap-3 mt-2">
                   <img
                     :src="item.imageUrl"
                     class="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity flex-shrink-0"
-                    @click.stop="openPreview(item.imageUrl!)"
+                    @click.stop="openPreview(item.imageUrl)"
                     @dragstart.stop
                   />
                   <div class="flex-1">
@@ -676,7 +670,7 @@ function handleSave() {
             </div>
 
             <div
-              class="border-2 border-dashed rounded-lg p-3 text-center transition-all mt-2"
+              class="border-2 border-dashed rounded-lg p-4 text-center transition-all mt-2"
               :class="dragOver
                 ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
                 : 'border-slate-200 dark:border-slate-600'"
@@ -684,14 +678,8 @@ function handleSave() {
               @dragover="handleDragOver"
               @dragleave="handleDragLeave"
             >
-              <p class="text-xs text-slate-400">继续拖拽图片到此处添加</p>
+              <p class="text-xs text-slate-400">继续拖拽图片或文本到此处添加</p>
             </div>
-          </div>
-
-          <!-- 没有勾选任何类型时提示 -->
-          <div v-if="!enabledTypes.text && !enabledTypes.image && !enabledTypes.link" class="text-center py-8 text-slate-400">
-            <List class="w-10 h-10 mx-auto mb-2 opacity-50" />
-            <p class="text-sm">请勾选至少一种类型</p>
           </div>
         </div>
 
@@ -706,7 +694,7 @@ function handleSave() {
             class="flex-1 sm:flex-none px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors hover:shadow-lg"
             @click="handleSave"
           >
-            {{ isEdit ? '保存修改' : '创建复制板' }}
+            {{ isEdit ? '保存修改' : '创建剪切板' }}
           </button>
         </div>
       </div>
