@@ -87,7 +87,7 @@ function previewText(content: string): string {
 
 <template>
   <div
-    class="snippet-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-600 group relative overflow-hidden"
+    class="snippet-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-600 group relative overflow-hidden flex flex-col h-64"
     :class="{ 'ring-2 ring-indigo-500 border-indigo-500': isSelected }"
     @click="emit('select')"
   >
@@ -96,7 +96,7 @@ function previewText(content: string): string {
       :style="{ backgroundColor: categoryStore.getCategoryColor(snippet.categoryId) }"
     ></div>
 
-    <div class="flex items-start justify-between mb-2 pl-2">
+    <div class="flex items-start justify-between mb-2 pl-2 flex-shrink-0">
       <h3 class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate flex-1 pr-2 flex items-center gap-1.5">
         <component :is="getTypeIcon()" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
         <span class="truncate">{{ snippet.title }}</span>
@@ -125,22 +125,22 @@ function previewText(content: string): string {
       </div>
     </div>
 
-    <div class="pl-2" :class="{ 'overflow-hidden': collapsed }">
+    <div class="pl-2 flex-1 flex flex-col min-h-0">
       <!-- 图片类型 -->
-      <div v-if="snippet.type === 'image' && snippet.imageUrl" class="mb-2">
+      <div v-if="snippet.type === 'image' && snippet.imageUrl" class="mb-2 flex-shrink-0">
         <img
           :src="snippet.imageUrl"
           :alt="snippet.title"
-          class="rounded-lg max-h-32 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-          :class="{ 'max-h-20': collapsed }"
+          class="rounded-lg w-full h-24 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+          :class="{ 'h-16': collapsed }"
           @click.stop="handleCopyImage"
         />
       </div>
 
       <!-- 多条类型 -->
-      <div v-else-if="snippet.type === 'multi' && snippet.items && snippet.items.length > 0" class="space-y-1.5 mb-2">
+      <div v-else-if="snippet.type === 'multi' && snippet.items && snippet.items.length > 0" class="space-y-1.5 mb-2 flex-1 overflow-hidden">
         <div
-          v-for="(item, idx) in snippet.items.slice(0, collapsed ? 2 : 5)"
+          v-for="(item, idx) in snippet.items.slice(0, collapsed ? 2 : 4)"
           :key="item.id"
           class="flex items-center gap-2 p-1.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors group/item"
           @click.stop="handleCopyItem($event, item.content, item.imageUrl)"
@@ -161,31 +161,18 @@ function previewText(content: string): string {
           </div>
           <Copy class="w-3 h-3 text-slate-300 group-hover/item:text-indigo-500 transition-colors flex-shrink-0" />
         </div>
-        <p v-if="snippet.items.length > (collapsed ? 2 : 5)" class="text-xs text-slate-400 text-center pt-1">
-          还有 {{ snippet.items.length - (collapsed ? 2 : 5) }} 项...
+        <p v-if="snippet.items.length > (collapsed ? 2 : 4)" class="text-xs text-slate-400 text-center pt-1">
+          还有 {{ snippet.items.length - (collapsed ? 2 : 4) }} 项...
         </p>
       </div>
 
       <!-- 文本/链接类型 -->
-      <p v-else class="text-xs text-slate-500 dark:text-slate-400 whitespace-pre-line mb-3 leading-relaxed"
+      <p v-else class="text-xs text-slate-500 dark:text-slate-400 whitespace-pre-line mb-3 leading-relaxed flex-1 overflow-hidden"
          :class="collapsed ? 'line-clamp-2' : 'line-clamp-4'">
         {{ previewText(snippet.content) }}
       </p>
 
-      <div v-if="snippet.tags.length > 0 && !collapsed" class="flex flex-wrap gap-1 mb-2">
-        <span
-          v-for="tag in snippet.tags.slice(0, 3)"
-          :key="tag"
-          class="px-2 py-0.5 text-xs bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-full"
-        >
-          #{{ tag }}
-        </span>
-        <span v-if="snippet.tags.length > 3" class="text-xs text-slate-400">
-          +{{ snippet.tags.length - 3 }}
-        </span>
-      </div>
-
-      <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+      <div class="flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 flex-shrink-0 mt-auto">
         <span class="flex items-center gap-1">
           <span
             class="w-2 h-2 rounded-full"

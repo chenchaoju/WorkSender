@@ -17,6 +17,7 @@ const settingsStore = useSettingsStore()
 const editorVisible = ref(false)
 const editingSnippet = ref<Snippet | null>(null)
 const mobileSidebarOpen = ref(false)
+const desktopSidebarCollapsed = ref(false)
 
 onMounted(() => {
   settingsStore.initTheme()
@@ -71,7 +72,12 @@ function selectSnippet(snippet: Snippet) {
     <AppHeader @new-snippet="openNewSnippet" @toggle-sidebar="mobileSidebarOpen = !mobileSidebarOpen" />
 
     <div class="flex-1 flex overflow-hidden">
-      <CategorySidebar :mobile-open="mobileSidebarOpen" @close-mobile="mobileSidebarOpen = false" />
+      <CategorySidebar
+        :mobile-open="mobileSidebarOpen"
+        :desktop-collapsed="desktopSidebarCollapsed"
+        @close-mobile="mobileSidebarOpen = false"
+        @toggle-desktop="desktopSidebarCollapsed = !desktopSidebarCollapsed"
+      />
 
       <main class="flex-1 overflow-hidden flex flex-col">
         <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">

@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useCategoryStore } from '@/stores/categories'
 import { useSnippetStore } from '@/stores/snippets'
-import { Folder, FolderOpen, Hash, Plus, Settings as SettingsIcon, Inbox, X, GripVertical } from 'lucide-vue-next'
+import { Folder, FolderOpen, Hash, Plus, Settings as SettingsIcon, Inbox, X, GripVertical, PanelLeftClose, PanelLeftOpen } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 
 const categoryStore = useCategoryStore()
@@ -10,10 +10,12 @@ const snippetStore = useSnippetStore()
 
 const props = defineProps<{
   mobileOpen?: boolean
+  desktopCollapsed?: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'close-mobile'): void
+  (e: 'toggle-desktop'): void
 }>()
 
 const newCatName = ref('')
@@ -152,64 +154,84 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
   ></div>
 
   <aside
-    class="w-64 flex-shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col h-full transition-transform duration-300 z-50
+    class="flex-shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 flex flex-col h-full transition-all duration-300 z-50
     fixed lg:static top-0 left-0 bottom-0 lg:translate-x-0"
-    :class="mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'"
+    :class="[
+      mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+      props.desktopCollapsed ? 'w-14' : 'w-64'
+    ]"
   >
-    <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-      <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+    <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between" :class="props.desktopCollapsed ? 'px-3 py-4 justify-center' : ''">
+      <h2 v-if="!props.desktopCollapsed" class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
         <Folder class="w-4 h-4" />
         分类管理
       </h2>
-      <button
-        class="lg:hidden p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400"
-        @click="emit('close-mobile')"
-      >
-        <X class="w-5 h-5" />
-      </button>
+      <div class="flex items-center gap-1">
+        <button
+          class="hidden lg:block p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400"
+          @click="emit('toggle-desktop')"
+          :title="props.desktopCollapsed ? '展开' : '收起'"
+        >
+          <PanelLeftClose v-if="!props.desktopCollapsed" class="w-4 h-4" />
+          <PanelLeftOpen v-else class="w-4 h-4" />
+        </button>
+        <button
+          class="lg:hidden p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded text-slate-400"
+          @click="emit('close-mobile')"
+        >
+          <X class="w-5 h-5" />
+        </button>
+      </div>
     </div>
 
     <div class="flex-1 overflow-y-auto py-2">
       <div
-        class="category-item mx-2 px-3 py-2 rounded-md cursor-pointer flex items-center justify-between transition-all duration-200"
-        :class="isActiveAll
-          ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
-          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'"
+        class="category-item mx-2 px-3 py-2 rounded-md cursor-pointer flex items-center transition-all duration-200"
+        :class="[
+          isActiveAll
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
+          props.desktopCollapsed ? 'justify-center px-2' : 'justify-between'
+        ]"
         @click="selectAll"
       >
-        <span class="flex items-center gap-2">
-          <FolderOpen class="w-4 h-4" />
-          全部复制板
+        <span class="flex items-center gap-2" :class="props.desktopCollapsed ? '' : ''">
+          <FolderOpen class="w-4 h-4 flex-shrink-0" :title="props.desktopCollapsed ? '全部复制板' : ''" />
+          <span v-if="!props.desktopCollapsed">全部复制板</span>
         </span>
-        <span class="text-xs opacity-70">{{ snippetStore.countByCategory(null) }}</span>
+        <span v-if="!props.desktopCollapsed" class="text-xs opacity-70">{{ snippetStore.countByCategory(null) }}</span>
       </div>
 
       <div
-        class="category-item mx-2 px-3 py-2 rounded-md cursor-pointer flex items-center justify-between transition-all duration-200"
-        :class="isActiveUncategorized
-          ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
-          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'"
+        class="category-item mx-2 px-3 py-2 rounded-md cursor-pointer flex items-center transition-all duration-200"
+        :class="[
+          isActiveUncategorized
+            ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
+            : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
+          props.desktopCollapsed ? 'justify-center px-2' : 'justify-between'
+        ]"
         @click="selectUncategorized"
       >
         <span class="flex items-center gap-2">
-          <Inbox class="w-4 h-4" />
-          未分类
+          <Inbox class="w-4 h-4 flex-shrink-0" :title="props.desktopCollapsed ? '未分类' : ''" />
+          <span v-if="!props.desktopCollapsed">未分类</span>
         </span>
-        <span class="text-xs opacity-70">{{ snippetStore.countByCategory('__uncategorized__') }}</span>
+        <span v-if="!props.desktopCollapsed" class="text-xs opacity-70">{{ snippetStore.countByCategory('__uncategorized__') }}</span>
       </div>
 
-      <div class="h-px bg-slate-200 dark:bg-slate-700 mx-4 my-2"></div>
+      <div v-if="!props.desktopCollapsed" class="h-px bg-slate-200 dark:bg-slate-700 mx-4 my-2"></div>
 
       <div
         v-for="cat in categoryStore.sortedCategories"
         :key="cat.id"
-        class="category-item mx-2 px-3 py-2 rounded-md cursor-pointer flex items-center justify-between transition-all duration-200 group"
+        class="category-item mx-2 px-3 py-2 rounded-md cursor-pointer flex items-center transition-all duration-200 group"
         :class="[
           snippetStore.activeCategoryId === cat.id
             ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 font-medium'
             : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700',
           dragOverId === cat.id ? 'ring-2 ring-indigo-400' : '',
-          dragId === cat.id ? 'opacity-50' : ''
+          dragId === cat.id ? 'opacity-50' : '',
+          props.desktopCollapsed ? 'justify-center px-2' : 'justify-between'
         ]"
         draggable="true"
         @click="selectCategory(cat.id)"
@@ -219,7 +241,7 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
         @drop="onDrop($event, cat.id)"
         @dragend="onDragEnd"
       >
-        <div v-if="editingId === cat.id" class="flex items-center gap-2 flex-1" @click.stop>
+        <div v-if="editingId === cat.id && !props.desktopCollapsed" class="flex items-center gap-2 flex-1" @click.stop>
           <input
             v-model="editName"
             class="flex-1 px-2 py-1 text-sm border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 outline-none focus:border-indigo-500"
@@ -241,12 +263,12 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
           <button class="text-xs text-slate-400 hover:text-slate-600" @click.stop="cancelEdit">取消</button>
         </div>
         <template v-else>
-          <span class="flex items-center gap-2 truncate">
-            <GripVertical class="w-3 h-3 text-slate-300 dark:text-slate-600 cursor-grab active:cursor-grabbing flex-shrink-0" />
+          <span class="flex items-center gap-2 truncate" :title="cat.name">
+            <GripVertical v-if="!props.desktopCollapsed" class="w-3 h-3 text-slate-300 dark:text-slate-600 cursor-grab active:cursor-grabbing flex-shrink-0" />
             <span class="w-2.5 h-2.5 rounded-full flex-shrink-0" :style="{ backgroundColor: cat.color }"></span>
-            <span class="truncate">{{ cat.name }}</span>
+            <span v-if="!props.desktopCollapsed" class="truncate">{{ cat.name }}</span>
           </span>
-          <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div v-if="!props.desktopCollapsed" class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               class="p-1 hover:bg-slate-200 dark:hover:bg-slate-600 rounded"
               @click.stop="startEdit(cat.id, cat.name, cat.color)"
@@ -262,12 +284,12 @@ const isActiveUncategorized = computed(() => snippetStore.activeCategoryId === '
               <span class="text-xs">×</span>
             </button>
           </div>
-          <span class="text-xs opacity-70 group-hover:opacity-0 transition-opacity">{{ snippetStore.countByCategory(cat.id) }}</span>
+          <span v-if="!props.desktopCollapsed" class="text-xs opacity-70 group-hover:opacity-0 transition-opacity">{{ snippetStore.countByCategory(cat.id) }}</span>
         </template>
       </div>
     </div>
 
-    <div class="p-3 border-t border-slate-200 dark:border-slate-700">
+    <div v-if="!props.desktopCollapsed" class="p-3 border-t border-slate-200 dark:border-slate-700">
       <div class="flex gap-2 mb-2">
         <input
           v-model="newCatName"
