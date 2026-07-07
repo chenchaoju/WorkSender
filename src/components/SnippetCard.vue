@@ -21,11 +21,6 @@ const categoryStore = useCategoryStore()
 const copied = ref(false)
 const collapsed = ref(false)
 
-function toggleCollapse(e: Event) {
-  e.stopPropagation()
-  collapsed.value = !collapsed.value
-}
-
 async function handleCopy(e: Event) {
   e.stopPropagation()
   const ok = await copyToClipboard(props.snippet.content)
@@ -90,6 +85,7 @@ function previewText(content: string): string {
     class="snippet-card bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 p-4 cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-600 group relative overflow-hidden flex flex-col h-64"
     :class="{ 'ring-2 ring-indigo-500 border-indigo-500': isSelected }"
     @click="emit('select')"
+    @dblclick="emit('edit')"
   >
     <div
       class="absolute top-0 left-0 w-1 h-full"
@@ -115,8 +111,15 @@ function previewText(content: string): string {
           <Copy v-else class="w-4 h-4" />
         </button>
         <button
+          class="p-1.5 hover:bg-amber-100 dark:hover:bg-amber-900/30 rounded-md text-slate-400 hover:text-amber-600 dark:hover:text-amber-400 transition-colors"
+          @click.stop="emit('edit')"
+          title="编辑详情"
+        >
+          <Edit3 class="w-4 h-4" />
+        </button>
+        <button
           class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-          @click="toggleCollapse"
+          @click.stop="collapsed = !collapsed"
           :title="collapsed ? '展开' : '收起'"
         >
           <ChevronUp v-if="!collapsed" class="w-4 h-4" />
@@ -126,7 +129,6 @@ function previewText(content: string): string {
     </div>
 
     <div class="pl-2 flex-1 flex flex-col min-h-0">
-      <!-- 图片类型 -->
       <div v-if="snippet.type === 'image' && snippet.imageUrl" class="mb-2 flex-shrink-0">
         <img
           :src="snippet.imageUrl"
@@ -137,7 +139,6 @@ function previewText(content: string): string {
         />
       </div>
 
-      <!-- 多条类型 -->
       <div v-else-if="snippet.type === 'multi' && snippet.items && snippet.items.length > 0" class="space-y-1.5 mb-2 flex-1 overflow-hidden">
         <div
           v-for="(item, idx) in snippet.items.slice(0, collapsed ? 2 : 4)"
@@ -166,7 +167,6 @@ function previewText(content: string): string {
         </p>
       </div>
 
-      <!-- 文本/链接类型 -->
       <p v-else class="text-xs text-slate-500 dark:text-slate-400 whitespace-pre-line mb-3 leading-relaxed flex-1 overflow-hidden"
          :class="collapsed ? 'line-clamp-2' : 'line-clamp-4'">
         {{ previewText(snippet.content) }}
@@ -180,22 +180,13 @@ function previewText(content: string): string {
           ></span>
           {{ categoryStore.getCategoryName(snippet.categoryId) }}
         </span>
-        <span class="opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-          <button
-            class="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded hover:text-indigo-500"
-            @click.stop="emit('edit')"
-            title="编辑"
-          >
-            <Edit3 class="w-3 h-3" />
-          </button>
-          <button
-            class="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-400 hover:text-red-500 rounded"
-            @click.stop="emit('delete')"
-            title="删除"
-          >
-            <Trash2 class="w-3 h-3" />
-          </button>
-        </span>
+        <button
+          class="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-400 hover:text-red-500 rounded transition-colors"
+          @click.stop="emit('delete')"
+          title="删除"
+        >
+          <Trash2 class="w-3 h-3" />
+        </button>
       </div>
     </div>
   </div>
